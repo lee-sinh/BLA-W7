@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../model/ride/ride_pref.dart';
+import '../../../providers/async_value.dart';
 import '../../../providers/rides_preferences_provider.dart'; // <-- Import the provider
 import '../../theme/theme.dart';
 import '../../../utils/animations_util.dart';
@@ -17,14 +19,11 @@ class RidePrefScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final ridePrefProvider = context.watch<RidesPreferencesProvider>();
     final currentRidePreference = ridePrefProvider.currentPreference;
-    final pastPreferences = ridePrefProvider.preferencesHistory;
+    final pastPrefState = ridePrefProvider.pastPreferences;
 
     return Stack(
       children: [
-        // 1 - Background  Image
         const BlaBackground(),
-
-        // 2 - Foreground content
         Column(
           children: [
             const SizedBox(height: BlaSpacings.m),
@@ -45,7 +44,7 @@ class RidePrefScreen extends StatelessWidget {
                   RidePrefForm(
                     initialPreference: currentRidePreference,
                     onSubmit: (newPreference) async {
-                      ridePrefProvider.setCurrentPreferrence(newPreference);
+                      await ridePrefProvider.setCurrentPreferrence(newPreference);
                       await Navigator.of(context).push(
                         AnimationUtils.createBottomToTopRoute(
                           const RidesScreen(),
@@ -55,26 +54,34 @@ class RidePrefScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: BlaSpacings.m),
 
-                  // Past preferences list
-                  SizedBox(
-                    height: 200,
-                    child: ListView.builder(
-                      itemCount: pastPreferences.length,
-                      itemBuilder: (ctx, index) => RidePrefHistoryTile(
-                        ridePref: pastPreferences[index],
-                        onPressed: () async {
-                          ridePrefProvider.setCurrentPreferrence(
-                            pastPreferences[index],
-                          );
-                          await Navigator.of(context).push(
-                            AnimationUtils.createBottomToTopRoute(
-                              const RidesScreen(),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ),
+                Builder(
+                  builder: (_) {
+                    if (pastPrefState is AsyncLoading) {
+                      return const Text("Loading preferences...");
+                    } else if (pastPrefState is AsyncError) {
+                      return const Text("No connection. Try later.");
+                    } else if (pastPrefState is AsyncSuccess<List<RidePreference>>) {
+                      final pastPreferences = pastPrefState.value.reversed.toList();
+                      return SizedBox(
+                        height: 200,
+                        child: ListView.builder(
+                          itemCount: pastPreferences.length,
+                          itemBuilder: (ctx, index) => RidePrefHistoryTile(
+                            ridePref: pastPreferences[index],
+                            onPressed: () async {
+                              await ridePrefProvider.setCurrentPreferrence(pastPreferences[index]);
+                              await Navigator.of(context).push(
+                                AnimationUtils.createBottomToTopRoute(const RidesScreen()),
+                              );
+                            },
+                          ),
+                        ),
+                      );
+                    } else {
+                      return const SizedBox.shrink(); // fallback
+                    }
+                  },
+                ),
                 ],
               ),
             ),

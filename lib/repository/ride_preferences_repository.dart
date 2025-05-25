@@ -1,7 +1,11 @@
 import '../model/ride/ride_pref.dart';
 
 abstract class RidePreferencesRepository {
-  List<RidePreference> getPastPreferences();
+  RidePreference? get currentPreference => null;
 
-  void addPreference(RidePreference preference);
+  Future<List<RidePreference>> getPastPreferences();
+
+  Future<void> addPreference(RidePreference preference);
+
+  void setCurrentPreference(RidePreference pref) {}
 }
